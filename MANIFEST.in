@@ -1,0 +1,3 @@
+include COPYING
+include README
+recursive-include doc *.1

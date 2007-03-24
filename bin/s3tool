@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+
+# Copyright 2007 Josh Bressers
+
+# This file is part of s4ync.
+#
+# s4ync is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# any later version.
+#
+# s4ync is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Foobar; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+import sys
+import getopt
+import s4ync.config
+import s4ync.S3
+
+args = 'ha:s:'
+long_args = ['help', 'access-key=', 'secret-key=']
+
+def usage():
+    print """Usage: %s [OPTION] [COMMAND]
+Conduct various maintenance tasks on S3 data
+
+Options
+-a, --access-key=KEY    Amazon S3 access key
+-s, --secret-key=KEY    Amazon S3 secret key
+-h, --help              show this help
+
+Command Summary
+    buckets                     list all s3 buckets
+    new_bucket <bucket>         create a new s3 bucket
+    delete_bucket <bucket>      delete an s3 bucket
+    bucket_size <bucket>        Return the size in bytes used by <bucket>
+    files <bucket>              list all files in <bucket>
+    delete_file <bucket> <file> delete <file> from <bucket>
+
+    """ % (sys.argv[0]);
+    sys.exit(2)
+
+def buckets():
+    "Display a list of the available buckets from S3"
+
+    conn = s4ync.S3.S3()
+    for i in conn.get_buckets():
+        print i
+
+def files(bucket):
+    "Display a list of all files in a bucket"
+
+    conn = s4ync.S3.S3(bucket)
+    for i in conn.get_s3_filelist():
+        print i
+
+def new_bucket(bucket):
+    "Create a new bucket"
+
+    conn = s4ync.S3.S3()
+    conn.create_bucket(bucket)
+
+def delete_bucket(bucket):
+    "Delete a bucket"
+    conn = s4ync.S3.S3(bucket)
+    conn.delete_bucket()
+
+def delete_file(bucket, file):
+    "Delete a file from a bucket"
+    conn = s4ync.S3.S3(bucket)
+    conn.delete_s3_file(file)
+
+def bucket_size(bucket):
+    "Return the bytes a bucket is using"
+    conn = s4ync.S3.S3(bucket)
+    keys = conn.get_s3_keys()
+
+    size = 0
+
+    for i in keys:
+        size = size + int(i.size)
+
+    print size
+
+def main():
+    global args
+    global long_args
+
+    config = s4ync.config.get_config()
+
+    access_key = ''
+    secret_key = ''
+
+    try:
+        opts, pargs = getopt.getopt(sys.argv[1:], args, long_args)
+    except getopt.GetoptError:
+        usage()
+
+    if (args == []):
+        usage()
+
+    for var in opts:
+        if (var[0] == '-h' or var[0] == '--help'):
+            usage()
+        elif (var[0] == '-a' or var[0] == '--access-key'):
+            access_key = var[1]
+        elif (var[0] == '-s' or var[0] == '--secret-key'):
+            secret_key = var[1]
+        elif (var[0] == '--delete'):
+            config.delete = True
+        elif (var[0] == '-v' or var[0] == '--verbose'):
+            config.verbose = True
+
+    # Make sure all the blanks have been filled in
+    if ((not access_key) or (not secret_key)):
+        usage()
+
+    config.secret_key = secret_key
+    config.access_key = access_key
+
+    if (len(pargs) < 1):
+        usage()
+    else:
+        command = pargs[0]
+        args = pargs[1:]
+
+    if command == 'buckets':
+        buckets()
+    elif command == 'files' and len(args) == 1:
+        files(args[0])
+    elif command == 'new_bucket' and len(args) == 1:
+        new_bucket(args[0])
+    elif command == 'delete_bucket' and len(args) == 1:
+        delete_bucket(args[0])
+    elif command == 'bucket_size' and len(args) == 1:
+        bucket_size(args[0])
+    elif command == 'delete_file' and len(args) == 2:
+        delete_file(args[0], args[1])
+    else:
+        usage()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,28 @@
+------------------------------------------
+S3 Sync - s4ync
+------------------------------------------
+
+s4ync is a tool designed to allow easy encrypted backup and retrieval of
+data to Amazon's Simple Storage Service (S3).
+
+Requirements:
+
+boto:
+    s3ync requires boto to interface with Amazon S3
+    http://code.google.com/p/boto/
+
+gnupg:
+    GnuPG is required to encrypt the data sent to S3
+
+
+Basic Usage:
+
+The two main interfaces are the s3tool and s4ync scripts.
+
+s3tool is designed to interface with s3 for performing actions such as
+manipulating buckets.
+
+s4ync is the tool which can sync files to and from S3.
+
+More information on S3 can be found here:
+http://aws.amazon.com/s3

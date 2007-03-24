@@ -1,0 +1,38 @@
+=head1 NAME
+
+s4ync - Sync files to Amazon's Simple Storage Service (S3)
+
+=head1 SYNOPSIS
+
+s4ync [OPTION] [SOURCE] [DESTINATION]
+
+=head1 DESCRIPTION
+
+s4ync is a utility which can be used to store and retreive file data to and
+from Amazon S3.
+
+Either the SOURCE or DESTINATION should be an S3 bucket, specified with the
+syntax s3:<bucketname>.  When the SOURCE is S3, a path may be provided to
+sync files which match a given path.
+
+=head1 OPTIONS
+
+=item B<-v>, B<--verbose>            increase verbosity
+
+=item B<-a>, B<--access-key>=I<key>     Amazon S3 access key
+
+=item B<-s>, B<--secret-key>=I<key>     Amazon S3 secret key
+
+=item B<-e>, B<--encrypt>=I<key>        key gpg should encrypt to
+
+=item B<--delete>                 delete extraneous files from the destination
+
+=item B<-h>, B<--help>               show help
+
+=head1 AUTHOR
+
+Josh Bressers
+
+=head1 SEE ALSO
+
+s3tool(1)

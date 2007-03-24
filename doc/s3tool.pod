@@ -1,0 +1,43 @@
+=head1 NAME
+
+s3tool - Conduct various maintenance tasks on Amazon S3 data
+
+=head1 SYNOPSIS
+
+s3tool [OPTION] [COMMAND]
+
+=head1 DESCRIPTION
+
+s3tool is a utility which can be used to conduct maintenance tasks on S3
+data.
+
+=head1 OPTIONS
+
+=item B<-a>, B<--access-key>=I<key>     Amazon S3 access key
+
+=item B<-s>, B<--secret-key>=I<key>     Amazon S3 secret key
+
+=item B<-h>, B<--help>               show help
+
+=head1 COMMANDS
+
+=item B<buckets>                     list all s3 buckets
+
+=item B<new_bucket> I<bucket>           create a new s3 bucket
+
+=item B<delete_bucket> I<bucket>        delete an s3 bucket
+
+=item B<bucket_size> I<bucket>          Return the size in bytes used by <bucket>
+
+=item B<files> I<bucket>                list all files in <bucket>
+
+=item B<delete_file> I<bucket> I<file>     delete <file> from <bucket>
+
+
+=head1 AUTHOR
+
+Josh Bressers
+
+=head1 SEE ALSO
+
+s4ync(1)
