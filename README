@@ -11,13 +11,16 @@ boto:
     s3ync requires boto to interface with Amazon S3
     http://code.google.com/p/boto/
 
+    s4ync is known to work with boto version 0.8d
+
 gnupg:
     GnuPG is required to encrypt the data sent to S3
 
 
 Basic Usage:
 
-The two main interfaces are the s3tool and s4ync scripts.
+The two main interfaces are the s3tool and s4ync scripts.  See the man
+pages for tool usage.
 
 s3tool is designed to interface with s3 for performing actions such as
 manipulating buckets.
