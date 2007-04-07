@@ -79,12 +79,12 @@ def delete_file(bucket, file):
 def bucket_size(bucket):
     "Return the bytes a bucket is using"
     conn = s4ync.S3.S3(bucket)
-    keys = conn.get_s3_keys()
+    keys = conn.bucket.get_all_keys()
 
     size = 0
 
     for i in keys:
-        size = size + int(i.size)
+        size = size + int(i.real_key.size)
 
     print size
 

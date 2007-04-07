@@ -151,7 +151,12 @@ def sync_files(destination, source):
         connection.sync_filelist_to_s3(file_list, source)
     elif source[0:3] == 's3:':
         # We assume the user wants to pull from s3
-        (bucket, source) = source[3:].split(':', 1)
+        sources = source[3:].split(':', 1)
+        bucket = sources[0]
+        if len(sources) > 1:
+            source = sources[1]
+        else:
+            source = ''
         connection = S3.S3(bucket)
         connection.sync_s3_filelist(source, destination)
     else:

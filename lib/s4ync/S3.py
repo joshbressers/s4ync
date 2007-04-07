@@ -34,10 +34,13 @@ class S3:
 
         self.access_key = self.configuration.access_key
         self.secret_key = self.configuration.secret_key
-        self.bucket = bucket
 
         self.__connect()
-        self.__set_bucket()
+
+        if bucket:
+            self.bucket = Bucket(self.conn, bucket)
+        else:
+            self.bucket = None
 
     def __connect(self):
         "Open the S3 connection"
@@ -45,67 +48,42 @@ class S3:
         self.conn = boto.s3.connection.S3Connection(self.access_key,
             self.secret_key)
 
-    def __set_bucket(self):
-        "Set the bucket we want to use"
-
-        if self.bucket is None:
-            # A bucket of None means we don't want to open a bucket
-            return
-
-        self.bucket = try_again(self.conn.get_bucket, self.bucket)
-
     def create_bucket(self, bucket):
         "Create a new bucket"
 
-        self.bucket = try_again(self.conn.create_bucket, bucket)
+        s3_bucket = try_again(self.conn.create_bucket, bucket)
+        self.bucket = Bucket(self.conn, bucket)
 
     def delete_bucket(self):
         "Delete the current bucket"
 
-        files = self.get_s3_filelist()
-        while(files):
-            for i in files:
-                self.delete_s3_file(i)
-            files = self.get_s3_filelist()
-
-        try_again(self.conn.delete_bucket, self.bucket)
+        self.bucket.delete()
         self.bucket = None
 
     def sync_file_to_s3(self, file, base):
         "Sync a single file to S3"
 
         filepath = re.sub(base, '', file.name)
+        key = self.bucket.get_key(filepath, True)
 
-        key = try_again(self.bucket.lookup, filepath)
-        if key is None:
-            # This file doesn't exist
-            key = try_again(self.bucket.new_key)
-            key.key = filepath
-        else:
-            # The file exists, let's see if it needs to be updated
-            size = key.get_metadata('size')
-            mtime = key.get_metadata('mtime')
-            if str(file.size) == size and str(file.mtime) == mtime:
-                # Nothing has changed, no need to update this file
-                if self.configuration.verbose > 1:
-                    print file.name + " ... Skipping"
-                return
+        # The file exists, let's see if it needs to be updated
+        if file.size == key.size and file.mtime == key.mtime:
+            # Nothing has changed, no need to update this file
+            if self.configuration.verbose > 1:
+                print file.name + " ... Skipping"
+            return
 
-        key.set_metadata('size', str(file.size))
-        key.set_metadata('mtime', str(file.mtime))
+        key.size = file.size
+        key.mtime = file.mtime
 
         if file.link:
-            key.set_metadata('symlink', str(file.link))
+            key.link = str(file.link)
 
         if self.configuration.verbose:
             print file.name
 
-        if file.link:
-            try_again(key.set_contents_from_string, "")
-        else:
-            file.encrypt()
-            try_again(key.set_contents_from_file, file)
-            file.close()
+        key.upload(file)
+        file.close()
 
     def sync_filelist_to_s3(self, filelist, base):
         "Sync an array of files to S3"
@@ -127,7 +105,7 @@ class S3:
     def sync_s3_to_file(self, s3_filename, local_file):
         "Sync from S3 to a local file"
 
-        key = try_again(self.bucket.lookup, s3_filename)
+        key = self.bucket.get_key(s3_filename)
         if key is None:
             # This file doesn't exist
             raise Exception, "Key doesn't exist"
@@ -137,22 +115,21 @@ class S3:
             os.makedirs(directory)
         file_object = file.File(local_file)
 
-        size = key.get_metadata('size')
-        mtime = key.get_metadata('mtime')
-        if str(file_object.size) == size and str(file_object.mtime) == mtime:
+        if file_object.size == key.size and \
+                file_object.mtime == key.mtime:
             # Nothing has changed, no need to update this file
             return
 
         if self.configuration.verbose:
             print file_object.name
 
-        if key.metadata.has_key('symlink'):
-            file_object.link = key.get_metadata('symlink')
+        if key.link:
+            file_object.link = key.link;
             file_object.get_fp()
         else:
-            try_again(key.get_contents_to_file, file_object)
+            key.download(file_object)
             file_object.decrypt()
-            file_object.set_mtime(int(key.get_metadata('mtime')))
+            file_object.set_mtime(key.mtime)
             file_object.close()
 
     def sync_s3_filelist(self, source, destination):
@@ -169,7 +146,8 @@ class S3:
 
         if self.configuration.verbose:
             print "Deleting " + filename
-        try_again(self.bucket.delete_key, filename)
+        key = self.bucket.get_key(filename)
+        key.delete()
 
     def get_buckets(self):
         "Return a list of all buckets"
@@ -186,28 +164,101 @@ class S3:
         "Return an array of filenames"
 
         filenames = []
-
-        keys = self.get_s3_keys(prefix)
-
+        keys = self.bucket.get_all_keys(prefix)
         for i in keys:
-            filenames.append(i.key)
+            filenames.append(i.filename)
 
         return filenames
 
-    def get_s3_keys(self, prefix = ''):
-        "Return an array of S3 key objects"
+class Bucket:
 
-        keys = try_again(self.bucket.get_all_keys, prefix=prefix)
+    def __init__(self, connection, name):
+        self.connection = connection
+        self.name = name
+        self.real_bucket = try_again(self.connection.get_bucket, self.name)
+
+    def get_all_keys(self, prefix=''):
+        "Return a list of all key objects"
+
+        all_keys = []
+
+        keys = try_again(self.real_bucket.get_all_keys, prefix=prefix)
         if len(keys) > 0:
             while True:
                 last = keys[-1]
-                rs = try_again(self.bucket.get_all_keys, marker=last.key,
+                rs = try_again(self.real_bucket.get_all_keys, marker=last.key,
                     prefix=prefix)
                 if len(rs) < 1:
                     break
                 keys._results.extend(rs._results)
 
-        return keys
+        for i in keys:
+            all_keys.append(Key(self.real_bucket, i))
+
+        return all_keys
+
+    def get_key(self, filename, create=False):
+        "Return a single key"
+
+        key = try_again(self.real_bucket.lookup, filename)
+
+        if key is None and create:
+            # This file doesn't exist, let's create it
+            key = try_again(self.real_bucket.new_key)
+            key.key = filename
+
+        return Key(self.real_bucket, key)
+
+    def delete(self):
+        "Delete this bucket and all its contents from S3"
+
+        files = self.get_all_keys()
+        for i in files:
+            i.delete()
+        try_again(self.connection.delete_bucket, self.real_bucket)
+
+class Key:
+
+    def __init__(self, bucket, key):
+        self.bucket = bucket
+        self.real_key = key
+        self.link = False
+
+        self.filename = key.key
+
+        if key.metadata.has_key('size'):
+            self.size = int(key.get_metadata('size'))
+        else:
+            self.size = 0
+        if key.metadata.has_key('mtime'):
+            self.mtime = int(key.get_metadata('mtime'))
+        else:
+            self.mtime = 0
+
+        if key.metadata.has_key('symlink'):
+            self.link = key.get_metadata('symlink')
+
+    def upload(self, file):
+        "Sync the contents to S3"
+
+        self.real_key.set_metadata('size', str(self.size))
+        self.real_key.set_metadata('mtime', str(self.mtime))
+
+        if self.link:
+            self.real_key.set_metadata('symlink', self.link)
+
+            try_again(self.real_key.set_contents_from_string, "")
+        else:
+            try_again(self.real_key.set_contents_from_file, file)
+
+    def download(self, file):
+        "Write the S3 contents into a file object"
+        try_again(self.real_key.get_contents_to_file, file)
+
+    def delete(self):
+        "Delete the key from S3"
+
+        try_again(self.bucket.delete_key, self.real_key.key)
 
 def try_again(function, *args, **keywords):
     "Try to execute a function a number of times"
