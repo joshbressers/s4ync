@@ -25,6 +25,7 @@ import config
 import os.path
 import re
 import file
+import time
 
 class S3:
 
@@ -270,6 +271,7 @@ def try_again(function, *args, **keywords):
         except KeyboardInterrupt, e:
             raise e
         except Exception, e:
+            time.sleep(10)
             times = times - 1
             if times == 0:
                 raise e
