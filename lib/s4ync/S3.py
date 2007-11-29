@@ -100,6 +100,8 @@ class S3:
         # XXX: Use a set here
         if self.configuration.delete:
             for i in s3_filelist:
+                if i is None:
+                    continue
                 if not local_filelist.has_key(i):
                     self.delete_s3_file(i)
 
@@ -181,22 +183,9 @@ class Bucket:
     def get_all_keys(self, prefix=''):
         "Return a list of all key objects"
 
-        all_keys = []
+        keys = try_again(self.real_bucket.list, prefix=prefix)
 
-        keys = try_again(self.real_bucket.get_all_keys, prefix=prefix)
-        if len(keys) > 0:
-            while True:
-                last = keys[-1]
-                rs = try_again(self.real_bucket.get_all_keys, marker=last.key,
-                    prefix=prefix)
-                if len(rs) < 1:
-                    break
-                keys._results.extend(rs._results)
-
-        for i in keys:
-            all_keys.append(Key(self.real_bucket, i))
-
-        return all_keys
+        return keys
 
     def get_key(self, filename, create=False):
         "Return a single key"
