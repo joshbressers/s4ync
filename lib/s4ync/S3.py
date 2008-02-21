@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2007 Josh Bressers
+# Copyright 2007,2008 Josh Bressers
 
 # This file is part of s4ync.
 #
@@ -26,6 +26,7 @@ import os.path
 import re
 import file
 import time
+import S3cache
 
 class S3:
 
@@ -65,15 +66,16 @@ class S3:
         "Sync a single file to S3"
 
         filepath = re.sub(base, '', file.name)
-        key = self.bucket.get_key(filepath, True)
+        key = self.bucket.get_key_metadata(filepath)
 
         # The file exists, let's see if it needs to be updated
-        if file.size == key.size and file.mtime == key.mtime:
+        if key and file.size == key['size'] and file.mtime == key['mtime']:
             # Nothing has changed, no need to update this file
             if self.configuration.verbose > 1:
                 print file.name + " ... Skipping"
             return
 
+        key = self.bucket.get_key(filepath, True)
         key.size = file.size
         key.mtime = file.mtime
 
@@ -83,7 +85,7 @@ class S3:
         if self.configuration.verbose:
             print file.name
 
-        key.upload(file)
+        self.bucket.add(key, file)
         file.close()
 
     def sync_filelist_to_s3(self, filelist, base):
@@ -149,8 +151,7 @@ class S3:
 
         if self.configuration.verbose:
             print "Deleting " + filename
-        key = self.bucket.get_key(filename)
-        key.delete()
+        self.bucket.delete_key(filename)
 
     def get_buckets(self):
         "Return a list of all buckets"
@@ -169,9 +170,25 @@ class S3:
         filenames = []
         keys = self.bucket.get_all_keys(prefix)
         for i in keys:
-            filenames.append(i.filename)
+            filenames.append(i)
 
         return filenames
+
+    def get_s3_file_data(self, filename):
+        "Return the metadata for a file"
+
+        metadata = {}
+
+        key = self.bucket.get_key_metadata(filename)
+
+        if key is None:
+            return None
+
+        metadata['size'] = key['size']
+        metadata['mtime'] = key['mtime']
+        metadata['link'] = key['link']
+
+        return metadata
 
 class Bucket:
 
@@ -179,13 +196,62 @@ class Bucket:
         self.connection = connection
         self.name = name
         self.real_bucket = try_again(self.connection.get_bucket, self.name)
+        self.configuration = config.get_config()
+        self.cache = None
+
+        if self.configuration.cache:
+            self.cache = S3cache.S3Cache(name)
+
+    def add(self, key, file):
+        "Add a file to S3"
+
+        key.upload(file)
+        if self.cache:
+            metadata = {}
+            metadata['size'] = key.size
+            metadata['mtime'] = key.mtime
+            metadata['link'] = key.link
+            self.cache.set(key.filename, metadata)
 
     def get_all_keys(self, prefix=''):
         "Return a list of all key objects"
 
-        keys = try_again(self.real_bucket.list, prefix=prefix)
+        keys = []
+
+        if self.cache:
+            keys= self.cache.get_keys()
+        else:
+            objects = try_again(self.real_bucket.get_all_keys, prefix=prefix)
+            for i in objects:
+                keys.append(i.key)
 
         return keys
+
+    def get_key_metadata(self, filename):
+        "Return the metadata for a single key"
+
+        metadata = {}
+
+        if self.cache:
+            key = self.cache.get(filename)
+
+            if key is None:
+                return None
+
+            metadata['size'] = key['size']
+            metadata['mtime'] = key['mtime']
+            metadata['link'] = key['link']
+        else:
+            key = self.get_key(filename)
+
+            if key is None:
+                return None
+
+            metadata['size'] = key.size
+            metadata['mtime'] = key.mtime
+            metadata['link'] = key.link
+
+        return metadata
 
     def get_key(self, filename, create=False):
         "Return a single key"
@@ -196,13 +262,27 @@ class Bucket:
             # This file doesn't exist, let's create it
             key = try_again(self.real_bucket.new_key)
             key.key = filename
+        elif key is None:
+            return None
 
         return Key(self.real_bucket, key)
+
+    def delete_key(self, filename):
+        "Deletes a stored file"
+
+        key = self.get_key(filename)
+        key.delete()
+        if self.cache:
+            self.cache.delete(filename)
 
     def delete(self):
         "Delete this bucket and all its contents from S3"
 
-        files = self.get_all_keys()
+        if self.cache:
+            print "Don't do this with a cache!"
+            sys.exit(1)
+
+        files = try_again(self.real_bucket.get_all_keys)
         for i in files:
             i.delete()
         try_again(self.connection.delete_bucket, self.real_bucket)
@@ -217,11 +297,11 @@ class Key:
         self.filename = key.key
 
         if key.metadata.has_key('size'):
-            self.size = int(key.get_metadata('size'))
+            self.size = int(float(key.get_metadata('size')))
         else:
             self.size = 0
         if key.metadata.has_key('mtime'):
-            self.mtime = int(key.get_metadata('mtime'))
+            self.mtime = int(float(key.get_metadata('mtime')))
         else:
             self.mtime = 0
 
@@ -239,6 +319,7 @@ class Key:
 
             try_again(self.real_key.set_contents_from_string, "")
         else:
+            file.encrypt()
             try_again(self.real_key.set_contents_from_file, file)
 
     def download(self, file):

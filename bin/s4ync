@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2007 Josh Bressers
+# Copyright 2007,2008 Josh Bressers
 
 # This file is part of s4ync.
 #
@@ -23,9 +23,9 @@ import getopt
 import s4ync.file
 import s4ync.config
 
-args = 'vha:s:e:'
+args = 'vha:s:e:c:'
 long_args = ['verbose', 'help', 'delete', 'access-key=', 'secret-key=',
-    'encrypt=']
+    'encrypt=', 'cache-dir=']
 
 def usage():
     print """Usage: %s [OPTION] [SOURCE] [DEST]
@@ -36,6 +36,7 @@ Options
 -a, --access-key=KEY    Amazon S3 access key
 -s, --secret-key=KEY    Amazon S3 secret key
 -e, --encrypt=email     key gpg will encrypt to
+-c, --cache-dir=DIR     directory that holds the cache files
     --delete            delete extraneous files from dest dirs
 -h, --help              show this help
     """ % (sys.argv[0]);
@@ -68,6 +69,8 @@ def main():
             secret_key = var[1]
         elif (var[0] == '-e' or var[0] == '--encrypt'):
             encrypt = var[1]
+        elif (var[0] == '-c' or var[0] == '--cache-dir'):
+            config.cache = var[1]
         elif (var[0] == '--delete'):
             config.delete = True
         elif (var[0] == '-v' or var[0] == '--verbose'):

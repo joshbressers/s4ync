@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2007 Josh Bressers
+# Copyright 2007,2008 Josh Bressers
 
 # This file is part of s4ync.
 #
@@ -26,6 +26,7 @@ class Config:
         # Set various default configuration options
         self.delete = False     # delete extraneous files from dest dirs
         self.verbose = 0        # Noise level
+        self.cache = ''
 
         # XXX: Get these two from a config file
         self.encrypt_cmd = "gpg --trust-model always -e -o - -r \"%s\" \"%s\""

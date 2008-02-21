@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2007 Josh Bressers
+# Copyright 2007,2008 Josh Bressers
 
 # This file is part of s4ync.
 #
@@ -22,9 +22,10 @@ import sys
 import getopt
 import s4ync.config
 import s4ync.S3
+import s4ync.S3cache
 
-args = 'ha:s:'
-long_args = ['help', 'access-key=', 'secret-key=']
+args = 'ha:s:c:'
+long_args = ['help', 'access-key=', 'secret-key=', 'cache-dir=']
 
 def usage():
     print """Usage: %s [OPTION] [COMMAND]
@@ -33,6 +34,7 @@ Conduct various maintenance tasks on S3 data
 Options
 -a, --access-key=KEY    Amazon S3 access key
 -s, --secret-key=KEY    Amazon S3 secret key
+-c, --cache-dir=DIR     Directory where the bucket cache is stored
 -h, --help              show this help
 
 Command Summary
@@ -42,6 +44,7 @@ Command Summary
     bucket_size <bucket>        Return the size in bytes used by <bucket>
     files <bucket>              list all files in <bucket>
     delete_file <bucket> <file> delete <file> from <bucket>
+    regen_cache <bucket>        Regenerate the cache for <bucket>
 
     """ % (sys.argv[0]);
     sys.exit(2)
@@ -75,6 +78,24 @@ def delete_file(bucket, file):
     "Delete a file from a bucket"
     conn = s4ync.S3.S3(bucket)
     conn.delete_s3_file(file)
+
+def regen_cache(bucket):
+    "Regenerate the local cache information for a bucket"
+    cache = s4ync.S3cache.S3Cache(bucket)
+
+    # Clear the cache variable, so it's not used by anything else.
+    config = s4ync.config.get_config()
+    config.cache = ''
+
+    conn = s4ync.S3.S3(bucket)
+    files = conn.get_s3_filelist()
+    cache.delete_all()
+
+
+    for i in files:
+        metadata = conn.get_s3_file_data(i)
+        print metadata
+        cache.set(i, metadata)
 
 def bucket_size(bucket):
     "Return the bytes a bucket is using"
@@ -116,6 +137,8 @@ def main():
             config.delete = True
         elif (var[0] == '-v' or var[0] == '--verbose'):
             config.verbose = True
+        elif (var[0] == '-c' or var[0] == '--cache-dir'):
+            config.cache = var[1]
 
     # Make sure all the blanks have been filled in
     if ((not access_key) or (not secret_key)):
@@ -142,6 +165,8 @@ def main():
         bucket_size(args[0])
     elif command == 'delete_file' and len(args) == 2:
         delete_file(args[0], args[1])
+    elif command == 'regen_cache' and len(args) == 1 and config.cache:
+        regen_cache(args[0])
     else:
         usage()
 
