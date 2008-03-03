@@ -27,6 +27,7 @@ class Config:
         self.delete = False     # delete extraneous files from dest dirs
         self.verbose = 0        # Noise level
         self.cache = ''
+        self.progress = False
 
         # XXX: Get these two from a config file
         self.encrypt_cmd = "gpg --trust-model always -e -o - -r \"%s\" \"%s\""

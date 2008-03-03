@@ -95,6 +95,10 @@ class S3:
         local_filelist = {}
 
         for i in filelist:
+            if self.configuration.progress:
+                print "%d%% (%d/%d)" % ( \
+                    ((filelist.index(i) * 100) / len(filelist)), \
+                    filelist.index(i), len(filelist))
             local_filelist[re.sub(base, '', i.name)] = 1
             self.sync_file_to_s3(i, base)
 

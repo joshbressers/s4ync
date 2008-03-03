@@ -23,9 +23,9 @@ import getopt
 import s4ync.file
 import s4ync.config
 
-args = 'vha:s:e:c:'
+args = 'vpha:s:e:c:'
 long_args = ['verbose', 'help', 'delete', 'access-key=', 'secret-key=',
-    'encrypt=', 'cache-dir=']
+    'encrypt=', 'cache-dir=', 'progress']
 
 def usage():
     print """Usage: %s [OPTION] [SOURCE] [DEST]
@@ -33,6 +33,7 @@ Sync the SOURCE files with the remote DEST bucket located on Amazon S3.
 
 Options
 -v, --verbose           increase verbosity
+-p, --progress          display progress of backup
 -a, --access-key=KEY    Amazon S3 access key
 -s, --secret-key=KEY    Amazon S3 secret key
 -e, --encrypt=email     key gpg will encrypt to
@@ -75,6 +76,8 @@ def main():
             config.delete = True
         elif (var[0] == '-v' or var[0] == '--verbose'):
             config.verbose = config.verbose + 1
+        elif (var[0] == '-p' or var[0] == '--progress'):
+            config.progress = True
 
     # Make sure all the blanks have been filled in
     if ((not access_key) or (not secret_key) or (not encrypt)):
