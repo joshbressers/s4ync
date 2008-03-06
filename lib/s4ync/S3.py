@@ -59,6 +59,17 @@ class S3:
     def delete_bucket(self):
         "Delete the current bucket"
 
+        if self.configuration.cache:
+            print "Don't do this with a cache!"
+            sys.exit(1)
+
+        s3_filelist = self.get_s3_filelist()
+
+        for i in s3_filelist:
+            if i is None:
+                continue
+            self.delete_s3_file(i)
+
         self.bucket.delete()
         self.bucket = None
 
@@ -171,10 +182,16 @@ class S3:
     def get_s3_filelist(self, prefix=''):
         "Return an array of filenames"
 
+        if self.configuration.verbose > 1:
+            print "Building filelist ..."
+
         filenames = []
         keys = self.bucket.get_all_keys(prefix)
         for i in keys:
             filenames.append(i)
+
+        if self.configuration.verbose > 1:
+            print " Done"
 
         return filenames
 
@@ -225,7 +242,7 @@ class Bucket:
         if self.cache:
             keys= self.cache.get_keys()
         else:
-            objects = try_again(self.real_bucket.get_all_keys, prefix=prefix)
+            objects = try_again(self.real_bucket.list, prefix=prefix)
             for i in objects:
                 keys.append(i.key)
 
@@ -280,15 +297,12 @@ class Bucket:
             self.cache.delete(filename)
 
     def delete(self):
-        "Delete this bucket and all its contents from S3"
+        "Delete this bucket from S3"
 
         if self.cache:
             print "Don't do this with a cache!"
             sys.exit(1)
 
-        files = try_again(self.real_bucket.get_all_keys)
-        for i in files:
-            i.delete()
         try_again(self.connection.delete_bucket, self.real_bucket)
 
 class Key:
