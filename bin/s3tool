@@ -24,14 +24,15 @@ import s4ync.config
 import s4ync.S3
 import s4ync.S3cache
 
-args = 'ha:s:c:'
-long_args = ['help', 'access-key=', 'secret-key=', 'cache-dir=']
+args = 'hva:s:c:'
+long_args = ['help', 'verbose', 'access-key=', 'secret-key=', 'cache-dir=']
 
 def usage():
     print """Usage: %s [OPTION] [COMMAND]
 Conduct various maintenance tasks on S3 data
 
 Options
+-v, --verbose           increase verbosity
 -a, --access-key=KEY    Amazon S3 access key
 -s, --secret-key=KEY    Amazon S3 secret key
 -c, --cache-dir=DIR     Directory where the bucket cache is stored
@@ -136,7 +137,7 @@ def main():
         elif (var[0] == '--delete'):
             config.delete = True
         elif (var[0] == '-v' or var[0] == '--verbose'):
-            config.verbose = True
+            config.verbose = config.verbose + 1
         elif (var[0] == '-c' or var[0] == '--cache-dir'):
             config.cache = var[1]
 
