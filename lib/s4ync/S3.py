@@ -355,7 +355,7 @@ def try_again(function, *args, **keywords):
     times = 10
     while(True):
         try:
-            return apply(function, args, keywords)
+            return function(*args, **keywords)
         except KeyboardInterrupt, e:
             raise e
         except Exception, e:
