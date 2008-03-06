@@ -66,6 +66,10 @@ class S3:
         s3_filelist = self.get_s3_filelist()
 
         for i in s3_filelist:
+            if self.configuration.progress:
+                print "%d%% (%d/%d)" % ( \
+                    ((s3_filelist.index(i) * 100) / len(s3_filelist)), \
+                    s3_filelist.index(i), len(s3_filelist))
             if i is None:
                 continue
             self.delete_s3_file(i)
