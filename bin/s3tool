@@ -96,8 +96,11 @@ def regen_cache(bucket):
 
 
     for i in files:
+        if config.progress:
+            print "%d%% (%d/%d)" % ( \
+                ((files.index(i) * 100) / len(files)), \
+                files.index(i), len(files))
         metadata = conn.get_s3_file_data(i)
-        print metadata
         cache.set(i, metadata)
 
 def bucket_size(bucket):
