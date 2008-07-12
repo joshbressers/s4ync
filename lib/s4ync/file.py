@@ -171,5 +171,6 @@ def __walk_callback(saved_files, path, names):
         if os.path.islink(current_file):
             del(names[names.index(file)])
             saved_files.append(File(current_file))
-        elif not os.path.isdir(current_file):
+        elif (not os.path.isdir(current_file)) \
+                and os.path.isfile(current_file):
             saved_files.append(File(current_file))
