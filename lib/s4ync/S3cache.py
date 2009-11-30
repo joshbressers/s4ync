@@ -20,7 +20,7 @@
 
 import config
 import os.path
-import anydbm
+import sqlite
 import pickle
 import base64
 
@@ -41,43 +41,68 @@ class S3Cache:
             self.cache_dir = self.configuration.cache
             if self.cache_dir:
                 cache_file = os.path.join(self.cache_dir, bucket)
-                self.cache = anydbm.open(cache_file, 'c')
+                self.cache = sqlite.connect(cache_file)
+                cachepool[bucket] = self.cache
 
-    def __encode_key(self, key):
-        return base64.b64encode(key.encode('utf-8')) 
+                # Does the table structure exist?
+                cursor = self.cache.cursor()
+                cursor.execute(
+                    'SELECT name FROM sqlite_master WHERE type="table"'
+                )
+                if cursor.rowcount == 0:
+                    # We need to create the table
+                    cursor.execute('CREATE TABLE bucket (filename TEXT PRIMARY KEY, data TEXT)')
+                    self.cache.commit()
 
-    def __decode_key(self, key):
-        new_key = base64.b64decode(key)
-        return unicode(new_key)
 
     def get(self, key):
-        key = self.__encode_key(key)
-        if self.cache.has_key(str(key)):
-            data = self.cache[str(key)]
+        cursor = self.cache.cursor()
+        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+
+        if cursor.rowcount == 1:
+            data = cursor.fetchone()[0]
             return pickle.loads(data)
         else:
             return None
 
     def set(self, key, data):
-        key = self.__encode_key(key)
+        cursor = self.cache.cursor()
         data = pickle.dumps(data)
-        self.cache[str(key)] = data
+
+        key = unicode(key).encode('utf-8')
+
+        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+        if cursor.rowcount == 1:
+            # We need to update the data
+            cursor.execute('UPDATE bucket set data="%s" where filename="%s"' \
+                % (data, key))
+        else:
+            # New key
+            cursor.execute('INSERT INTO bucket values ("%s", "%s")' % (key, data))
+
+        self.cache.commit()
 
     def get_keys(self):
+        cursor = self.cache.cursor()
         new_keys = []
-        keys = self.cache.keys()
-        for i in keys:
-            new_keys.append(self.__decode_key(i))
+
+        cursor.execute('SELECT filename FROM bucket')
+
+        for i in cursor.fetchall():
+            new_keys.append(i[0])
         return new_keys
 
     def delete(self, key):
-        key = self.__encode_key(key)
-        del self.cache[key]
+        cursor = self.cache.cursor()
+        cursor.execute('DELETE FROM bucket WHERE filename="%s"' % key)
+        self.cache.commit()
 
     def delete_all(self):
-        self.cache.clear()
-        self.cache.sync()
+        cursor = self.cache.cursor()
+        cursor.execute('DELETE FROM bucket')
+        self.cache.commit()
 
     def has_key(self, key):
-        key = self.__encode_key(key)
-        return key in self.cache
+        cursor = self.cache.cursor()
+        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+        return cursor.rowcount == 1
