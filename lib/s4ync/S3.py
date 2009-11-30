@@ -281,7 +281,15 @@ class Bucket:
     def get_key(self, filename, create=False):
         "Return a single key"
 
-        key = try_again(self.real_bucket.lookup, filename)
+        try:
+            if type(filename) == str:
+                key = try_again(self.real_bucket.lookup, filename)
+            else:
+                # If the filename is unicode, we need to turn it into utf-8
+                key = try_again(self.real_bucket.lookup, filename.encode('utf-8'))
+        except Exception, e:
+            print filename
+            raise e
 
         if key is None and create:
             # This file doesn't exist, let's create it
@@ -362,6 +370,10 @@ def try_again(function, *args, **keywords):
             return function(*args, **keywords)
         except KeyboardInterrupt, e:
             raise e
+	except KeyError, e:
+		print args
+		print keywords
+		raise e
         except Exception, e:
             time.sleep(10)
             times = times - 1

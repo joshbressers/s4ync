@@ -22,6 +22,7 @@ import config
 import os.path
 import anydbm
 import pickle
+import base64
 
 cachepool = {}
 
@@ -42,7 +43,15 @@ class S3Cache:
                 cache_file = os.path.join(self.cache_dir, bucket)
                 self.cache = anydbm.open(cache_file, 'c')
 
+    def __encode_key(self, key):
+        return base64.b64encode(key.encode('utf-8')) 
+
+    def __decode_key(self, key):
+        new_key = base64.b64decode(key)
+        return unicode(new_key)
+
     def get(self, key):
+        key = self.__encode_key(key)
         if self.cache.has_key(str(key)):
             data = self.cache[str(key)]
             return pickle.loads(data)
@@ -50,13 +59,19 @@ class S3Cache:
             return None
 
     def set(self, key, data):
+        key = self.__encode_key(key)
         data = pickle.dumps(data)
         self.cache[str(key)] = data
 
     def get_keys(self):
-        return self.cache.keys()
+        new_keys = []
+        keys = self.cache.keys()
+        for i in keys:
+            new_keys.append(self.__decode_key(i))
+        return new_keys
 
     def delete(self, key):
+        key = self.__encode_key(key)
         del self.cache[key]
 
     def delete_all(self):
@@ -64,4 +79,5 @@ class S3Cache:
         self.cache.sync()
 
     def has_key(self, key):
+        key = self.__encode_key(key)
         return key in self.cache
