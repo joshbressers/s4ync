@@ -24,9 +24,15 @@ import s4ync.config
 import s4ync.S3
 import s4ync.S3cache
 
-args = 'hpva:s:c:'
+import Queue
+from threading import Thread
+
+args = 'hpva:s:c:w:'
 long_args = ['help', 'verbose', 'access-key=', 'secret-key=', 'cache-dir=',
-    'progress']
+    'progress', 'workers=']
+
+# Number of threads to use
+workers = 3
 
 def usage():
     print """Usage: %s [OPTION] [COMMAND]
@@ -38,6 +44,8 @@ Options
 -a, --access-key=KEY    Amazon S3 access key
 -s, --secret-key=KEY    Amazon S3 secret key
 -c, --cache-dir=DIR     Directory where the bucket cache is stored
+-w, --workers=#         Number of worker threads to use for regen_cache
+                        (default is 3)
 -h, --help              show this help
 
 Command Summary
@@ -86,6 +94,13 @@ def regen_cache(bucket):
     "Regenerate the local cache information for a bucket"
     cache = s4ync.S3cache.S3Cache(bucket)
 
+    global workers
+    worker_threads = []
+
+    file_queue = Queue.Queue()
+    # We don't want this queue to get too full if the database is slow
+    result_queue = Queue.Queue(1024)
+
     # Clear the cache variable, so it's not used by anything else.
     config = s4ync.config.get_config()
     config.cache = ''
@@ -94,14 +109,48 @@ def regen_cache(bucket):
     files = conn.get_s3_filelist()
     cache.delete_all()
 
-
+    # Fill our queue
     for i in files:
+        file_queue.put(i)
+
+    # Launch the worker threads
+
+    # Worker thread object
+    class s3_thread(Thread):
+        def __init__ (self, s3_connection, the_file_queue, the_result_queue):
+            Thread.__init__(self)
+            self.s3 = s3_connection
+            self.queue = the_file_queue
+            self.db = the_result_queue
+
+        def run(self):
+            while True:
+                # Get a filename
+                if self.queue.empty():
+                    break
+
+                the_filename = self.queue.get()
+                # get the data
+                metadata = self.s3.get_s3_file_data(the_filename)
+                # Write it to the database queue
+                self.db.put((the_filename, metadata))
+        
+    for i in range(0, workers):
+        the_thread = s3_thread(s4ync.S3.S3(bucket), file_queue, result_queue)
+        worker_threads.append(the_thread)
+        the_thread.start()
+
+    total = len(files)
+    files_done = 0
+
+    while files_done != total:
         if config.progress:
             print "%d%% (%d/%d)" % ( \
-                ((files.index(i) * 100) / len(files)), \
-                files.index(i), len(files))
-        metadata = conn.get_s3_file_data(i)
+                    ((files_done * 100) / total), \
+                    files_done, total)
+        (i, metadata) = result_queue.get(True)
         cache.set(i, metadata)
+        files_done = files_done + 1
 
 def bucket_size(bucket):
     "Return the bytes a bucket is using"
@@ -118,6 +167,7 @@ def bucket_size(bucket):
 def main():
     global args
     global long_args
+    global workers
 
     config = s4ync.config.get_config()
 
@@ -139,6 +189,8 @@ def main():
             access_key = var[1]
         elif (var[0] == '-s' or var[0] == '--secret-key'):
             secret_key = var[1]
+        elif (var[0] == '-w' or var[0] == '--workers'):
+            workers = int(var[1])
         elif (var[0] == '--delete'):
             config.delete = True
         elif (var[0] == '-v' or var[0] == '--verbose'):
