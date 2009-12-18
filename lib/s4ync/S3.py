@@ -303,8 +303,10 @@ class Bucket:
     def delete_key(self, filename):
         "Deletes a stored file"
 
-        key = self.get_key(filename)
-        key.delete()
+        if type(filename) == unicode:
+            filename = filename.encode('utf-8')
+
+        try_again(self.real_bucket.delete_key, filename)
         if self.cache:
             self.cache.delete(filename)
 

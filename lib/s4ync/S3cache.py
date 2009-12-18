@@ -20,7 +20,7 @@
 
 import config
 import os.path
-import sqlite
+import sqlite3
 import pickle
 import base64
 
@@ -41,7 +41,7 @@ class S3Cache:
             self.cache_dir = self.configuration.cache
             if self.cache_dir:
                 cache_file = os.path.join(self.cache_dir, bucket)
-                self.cache = sqlite.connect(cache_file)
+                self.cache = sqlite3.connect(cache_file)
                 cachepool[bucket] = self.cache
 
                 # Does the table structure exist?
@@ -49,7 +49,7 @@ class S3Cache:
                 cursor.execute(
                     'SELECT name FROM sqlite_master WHERE type="table"'
                 )
-                if cursor.rowcount == 0:
+                if not cursor.fetchone():
                     # We need to create the table
                     cursor.execute('CREATE TABLE bucket (filename TEXT PRIMARY KEY, data TEXT)')
                     self.cache.commit()
@@ -59,8 +59,9 @@ class S3Cache:
         cursor = self.cache.cursor()
         cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
 
-        if cursor.rowcount == 1:
-            data = cursor.fetchone()[0]
+	the_data = cursor.fetchone()
+        if the_data:
+            data = the_data[0]
             return pickle.loads(data)
         else:
             return None
@@ -72,7 +73,7 @@ class S3Cache:
         key = unicode(key).encode('utf-8')
 
         cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
-        if cursor.rowcount == 1:
+        if cursor.fetchone():
             # We need to update the data
             cursor.execute('UPDATE bucket set data="%s" where filename="%s"' \
                 % (data, key))
@@ -105,4 +106,7 @@ class S3Cache:
     def has_key(self, key):
         cursor = self.cache.cursor()
         cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
-        return cursor.rowcount == 1
+        if cursor.fetchone():
+            return True
+        else:
+            return False
