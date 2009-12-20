@@ -21,8 +21,8 @@
 import config
 import os.path
 import sqlite3
-import pickle
 import base64
+import s4ync.file
 
 cachepool = {}
 
@@ -51,35 +51,37 @@ class S3Cache:
                 )
                 if not cursor.fetchone():
                     # We need to create the table
-                    cursor.execute('CREATE TABLE bucket (filename TEXT PRIMARY KEY, data TEXT)')
+                    cursor.execute('CREATE TABLE bucket (filename TEXT PRIMARY KEY, link TEXT DEFAULT NULL, mtime INT, size INT)')
                     self.cache.commit()
 
 
     def get(self, key):
         cursor = self.cache.cursor()
-        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+        cursor.execute('SELECT filename, link, mtime, size FROM bucket WHERE filename="%s"' % key)
+        metadata = {}
 
-	the_data = cursor.fetchone()
-        if the_data:
-            data = the_data[0]
-            return pickle.loads(data)
+        data = cursor.fetchone()
+        if data:
+            metadata['link'] = data[1]
+            metadata['mtime'] = data[2]
+            metadata['size'] = data[3]
+            return metadata
         else:
             return None
 
     def set(self, key, data):
         cursor = self.cache.cursor()
-        data = pickle.dumps(data)
 
-        key = unicode(key).encode('utf-8')
+        #key = unicode(key).encode('utf-8')
 
-        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+        cursor.execute('SELECT * FROM bucket WHERE filename="%s"' % key)
         if cursor.fetchone():
             # We need to update the data
-            cursor.execute('UPDATE bucket set data="%s" where filename="%s"' \
-                % (data, key))
+            cursor.execute('UPDATE bucket set link="%s", size="%s", mtime="%s" where filename="%s"' \
+                % (data['link'], data['size'], data['mtime'], key))
         else:
             # New key
-            cursor.execute('INSERT INTO bucket values ("%s", "%s")' % (key, data))
+            cursor.execute('INSERT INTO bucket (filename, link, size, mtime) values ("%s", "%s", "%s", "%s")' % (key, data['link'], data['size'], data['mtime']))
 
         self.cache.commit()
 
