@@ -36,11 +36,11 @@ class File:
         if os.path.islink(self.name):
             self.link = os.readlink(self.name)
             os.lstat(filepath)
-            self.mtime = os.lstat(filepath)[8]
-            self.size = os.lstat(filepath)[6]
+            self.mtime = int(os.lstat(filepath)[8])
+            self.size = int(os.lstat(filepath)[6])
         elif os.path.exists(self.name):
-            self.mtime = os.path.getmtime(filepath)
-            self.size = os.path.getsize(filepath)
+            self.mtime = int(os.path.getmtime(filepath))
+            self.size = int(os.path.getsize(filepath))
         else:
             self.mtime = -1
             self.size = -1
@@ -134,7 +134,7 @@ def get_files(path):
 
     files = []
 
-    os.path.walk(path, __walk_callback, files)
+    os.path.walk(unicode(path), __walk_callback, files)
 
     return files
 
@@ -170,7 +170,7 @@ def __walk_callback(saved_files, path, names):
         current_file = os.path.join(path, file)
         if os.path.islink(current_file):
             del(names[names.index(file)])
-            saved_files.append(File(current_file))
+            saved_files.append(current_file)
         elif (not os.path.isdir(current_file)) \
                 and os.path.isfile(current_file):
-            saved_files.append(File(current_file))
+            saved_files.append(current_file)

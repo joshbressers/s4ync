@@ -81,6 +81,10 @@ class S3:
         "Sync a single file to S3"
 
         filepath = re.sub(base, '', file.name)
+        try:
+            filepath = filepath.encode('utf-8')
+        except:
+            print "Error: " + filepath
         key = self.bucket.get_key_metadata(filepath)
 
         # The file exists, let's see if it needs to be updated
@@ -110,12 +114,13 @@ class S3:
         local_filelist = {}
 
         for i in filelist:
+            the_file = file.File(i)
             if self.configuration.progress:
                 print "%d%% (%d/%d)" % ( \
                     ((filelist.index(i) * 100) / len(filelist)), \
                     filelist.index(i), len(filelist))
-            local_filelist[re.sub(base, '', i.name)] = 1
-            self.sync_file_to_s3(i, base)
+            local_filelist[re.sub(base, '', the_file.name)] = 1
+            self.sync_file_to_s3(the_file, base)
 
         # Delete files no longer tracked on the local filesystem
         # XXX: Use a set here
@@ -124,7 +129,7 @@ class S3:
                 if i is None:
                     continue
                 if not local_filelist.has_key(i):
-                    self.delete_s3_file(i)
+                    self.delete_s3_file(i.encode('utf-8'))
 
     def sync_s3_to_file(self, s3_filename, local_file):
         "Sync from S3 to a local file"
@@ -324,7 +329,7 @@ class Key:
     def __init__(self, bucket, key):
         self.bucket = bucket
         self.real_key = key
-        self.link = False
+        self.link = ''
 
         self.filename = key.key
 
