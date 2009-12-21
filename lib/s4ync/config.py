@@ -18,20 +18,56 @@
 # along with Foobar; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
+
+import os
+import os.path
+import ConfigParser
+
 class Config:
     "Class to contain the various configuration derectives."
 
     def __init__(self):
 
+        self.config = {}
+
+        self.config['config_file'] = os.path.join(os.environ['HOME'], '.s4ync')
+
         # Set various default configuration options
-        self.delete = False     # delete extraneous files from dest dirs
-        self.verbose = 0        # Noise level
-        self.cache = ''
-        self.progress = False
+        self.config['delete'] = False # delete extraneous files from dest dirs
+        self.config['verbose'] = 0        # Noise level
+        self.config['cache'] = ''
+        self.config['progress'] = False
 
         # XXX: Get these two from a config file
-        self.encrypt_cmd = "gpg --trust-model always -e -o - -r \"%s\" \"%s\""
-        self.decrypt_cmd = "gpg -q --decrypt -o - \"%s\""
+        self.config['encrypt_cmd'] = "gpg --trust-model always -e -o - -r \"%s\" \"%s\""
+        self.config['decrypt_cmd'] = "gpg -q --decrypt -o - \"%s\""
+
+        self.read_config_file()
+
+    def __getattr__(self, name):
+        if self.config.has_key(name):
+            return self.config[name]
+        else:
+            return None
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+    def read_config_file(self, file=None):
+        'Load the configuration data from the configuration file'
+
+        if file:
+            self.config_file = file
+
+        config = ConfigParser.SafeConfigParser()
+        config_return = config.read(self.config_file)
+
+        if len(config_return) <= 0:
+            # No configuration data to read
+            return
+
+        for i in config.items('main'):
+            self.config[i[0]] = i[1]
 
 configuration = Config()
 

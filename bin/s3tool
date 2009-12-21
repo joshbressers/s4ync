@@ -171,9 +171,6 @@ def main():
 
     config = s4ync.config.get_config()
 
-    access_key = ''
-    secret_key = ''
-
     try:
         opts, pargs = getopt.getopt(sys.argv[1:], args, long_args)
     except getopt.GetoptError:
@@ -186,9 +183,9 @@ def main():
         if (var[0] == '-h' or var[0] == '--help'):
             usage()
         elif (var[0] == '-a' or var[0] == '--access-key'):
-            access_key = var[1]
+            config.access_key = var[1]
         elif (var[0] == '-s' or var[0] == '--secret-key'):
-            secret_key = var[1]
+            self.secret_key = var[1]
         elif (var[0] == '-w' or var[0] == '--workers'):
             workers = int(var[1])
         elif (var[0] == '--delete'):
@@ -198,14 +195,14 @@ def main():
         elif (var[0] == '-p' or var[0] == '--progress'):
             config.progress = True
         elif (var[0] == '-c' or var[0] == '--cache-dir'):
-            config.cache = var[1]
+            if var[1] == '':
+                config.cache = None
+            else:
+                config.cache = var[1]
 
     # Make sure all the blanks have been filled in
-    if ((not access_key) or (not secret_key)):
+    if ((not config.access_key) or (not config.secret_key)):
         usage()
-
-    config.secret_key = secret_key
-    config.access_key = access_key
 
     if (len(pargs) < 1):
         usage()

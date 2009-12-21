@@ -1,0 +1,5 @@
+[main]
+cache=/directory/to/hold/cache/files
+secret_key=secret_key_string
+access_key=access_key_string
+encrypt=gpg_key_username

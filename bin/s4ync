@@ -49,10 +49,6 @@ def main():
 
     config = s4ync.config.get_config()
 
-    access_key = ''
-    secret_key = ''
-    encrypt = ''
-
     try:
         opts, pargs = getopt.getopt(sys.argv[1:], args, long_args)
     except getopt.GetoptError:
@@ -65,11 +61,11 @@ def main():
         if (var[0] == '-h' or var[0] == '--help'):
             usage()
         elif (var[0] == '-a' or var[0] == '--access-key'):
-            access_key = var[1]
+            config.access_key = var[1]
         elif (var[0] == '-s' or var[0] == '--secret-key'):
-            secret_key = var[1]
+            config.secret_key = var[1]
         elif (var[0] == '-e' or var[0] == '--encrypt'):
-            encrypt = var[1]
+            config.encrypt = var[1]
         elif (var[0] == '-c' or var[0] == '--cache-dir'):
             config.cache = var[1]
         elif (var[0] == '--delete'):
@@ -80,12 +76,8 @@ def main():
             config.progress = True
 
     # Make sure all the blanks have been filled in
-    if ((not access_key) or (not secret_key) or (not encrypt)):
+    if ((not config.access_key) or (not config.secret_key) or (not config.encrypt)):
         usage()
-
-    config.secret_key = secret_key
-    config.access_key = access_key
-    config.encrypt = encrypt
 
     if (len(pargs) < 2):
         usage()

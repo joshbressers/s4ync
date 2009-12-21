@@ -26,6 +26,7 @@ import os.path
 import re
 import file
 import time
+import sys
 import S3cache
 
 class S3:
