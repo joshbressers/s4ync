@@ -4,7 +4,8 @@ s3tool - Conduct various maintenance tasks on Amazon S3 data
 
 =head1 SYNOPSIS
 
-s3tool [OPTION] [COMMAND]
+B<s3tool>
+S<[OPTION] [COMMAND]>
 
 =head1 DESCRIPTION
 
@@ -13,26 +14,65 @@ data.
 
 =head1 OPTIONS
 
-=item B<-a>, B<--access-key>=I<key>     Amazon S3 access key
+=over 4
 
-=item B<-s>, B<--secret-key>=I<key>     Amazon S3 secret key
+=item -v, --verbose
+
+increase verbosity
+
+=item -p, --progress
+
+display progress of operation
+
+=item -a, --access-key=E<lt>keyE<gt>
+
+Amazon S3 access key
+
+=item -s, --secret-key=E<lt>keyE<gt>
+
+Amazon S3 secret key
+
+=item -c, --cache-dir=E<lt>dirE<gt>
+
+Directory where the bucket cache is stored
+
+=item -w, --workers=E<lt>intE<gt>
+
+Number of worker threads to use for regen_cache
 
 =item B<-h>, B<--help>               show help
 
+=back
+
 =head1 COMMANDS
 
-=item B<buckets>                     list all s3 buckets
+=over 4
 
-=item B<new_bucket> I<bucket>           create a new s3 bucket
+=item buckets
 
-=item B<delete_bucket> I<bucket>        delete an s3 bucket
+List all s3 buckets
 
-=item B<bucket_size> I<bucket>          Return the size in bytes used by <bucket>
+=item new_bucket E<lt>bucketE<gt>
 
-=item B<files> I<bucket>                list all files in <bucket>
+Create a new s3 bucket
 
-=item B<delete_file> I<bucket> I<file>     delete <file> from <bucket>
+=item delete_bucket E<lt>bucketE<gt>
 
+Delete an s3 bucket
+
+=item bucket_size E<lt>bucketE<gt>
+
+Return the size in bytes used by <bucket>
+
+=item files E<lt>bucketE<gt>
+
+List all files in <bucket>
+
+=item delete_file E<lt>bucketE<gt> E<lt>fileE<gt>
+
+Delete <file> from <bucket>
+
+=back
 
 =head1 AUTHOR
 
@@ -41,3 +81,4 @@ Josh Bressers
 =head1 SEE ALSO
 
 s4ync(1)
+

@@ -4,7 +4,8 @@ s4ync - Sync files to Amazon's Simple Storage Service (S3)
 
 =head1 SYNOPSIS
 
-s4ync [OPTION] [SOURCE] [DESTINATION]
+B<s4ync>
+S<[OPTION] [SOURCE] [DESTINATION]>
 
 =head1 DESCRIPTION
 
@@ -17,17 +18,37 @@ sync files which match a given path.
 
 =head1 OPTIONS
 
-=item B<-v>, B<--verbose>            increase verbosity
+=over 4
 
-=item B<-a>, B<--access-key>=I<key>     Amazon S3 access key
+=item -v, --verbose
 
-=item B<-s>, B<--secret-key>=I<key>     Amazon S3 secret key
+Increase verbosity
 
-=item B<-e>, B<--encrypt>=I<key>        key gpg should encrypt to
+=item -p, --progress
 
-=item B<--delete>                 delete extraneous files from the destination
+Display progress of backup
 
-=item B<-h>, B<--help>               show help
+=item -a, --access-key=E<lt>keyE<gt>
+
+Amazon S3 access key
+
+=item -s, --secret-key=E<lt>keyE<gt>
+
+Amazon S3 secret key
+
+=item -e, --encrypt=E<lt>keyE<gt>
+
+Key gpg should encrypt to
+
+=item --delete
+
+Delete extraneous files from the destination
+
+=item -h, --help
+
+Show help
+
+=back
 
 =head1 AUTHOR
 
