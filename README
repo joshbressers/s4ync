@@ -11,10 +11,10 @@ boto:
     s3ync requires boto to interface with Amazon S3
     http://code.google.com/p/boto/
 
-    s4ync is known to work with boto version 0.8d
+    s4ync is known to work with boto version 1.8d
 
-gnupg:
-    GnuPG is required to encrypt the data sent to S3
+PyGPGME
+    PyGPGME is required to encrypt and decrypt the data sent to S3
 
 
 Basic Usage:

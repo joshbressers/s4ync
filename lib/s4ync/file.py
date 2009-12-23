@@ -22,7 +22,8 @@ import os
 import os.path
 import S3
 import config
-import StringIO
+import io
+import gpgme
 
 class File:
     "Class to describe a file object"
@@ -55,12 +56,12 @@ class File:
         if self.fp is None:
             if os.path.exists(self.name):
                 if self.link:
-                    self.fp = StringIO.StringIO()
+                    self.fp = io.BytesIO()
                 else:
                     self.fp = open(self.name, 'r+b')
             else:
                 if self.link:
-                    self.fp = StringIO.StringIO()
+                    self.fp = io.BytesIO()
                     os.symlink(self.link, self.name)
                 else:
                     self.fp = open(self.name, 'w+b')
@@ -102,14 +103,16 @@ class File:
 
         # XXX: This looks horrible, We can fix it later
 
-        (stdin, stdout) = os.popen2(self.config.encrypt_cmd % \
-            (self.config.encrypt, self.name))
+        the_fp = self.get_fp()
+        ciphertext = io.BytesIO()
+        context = gpgme.Context()
+        the_key = context.get_key(self.config.encrypt)
 
-        new_fp = StringIO.StringIO()
-        new_fp.write(stdout.read())
-        stdout.close()
-        new_fp.seek(0)
-        self.fp = new_fp
+        context.encrypt_sign([the_key], gpgme.ENCRYPT_ALWAYS_TRUST, the_fp,
+            ciphertext)
+
+        ciphertext.seek(0)
+        self.fp = ciphertext
 
     def decrypt(self):
         "Stream the data through a decryptor"
@@ -117,10 +120,13 @@ class File:
         fp = self.get_fp()
         fp.seek(0)
 
-        (stdin, stdout) = os.popen2(self.config.decrypt_cmd % self.name)
+        decrypted = io.BytesIO()
+        context = gpgme.Context()
+        context.decrypt(fp, decrypted)
 
+        decrypted.seek(0)
         fp.seek(0)
-        fp.write(stdout.read())
+        fp.write(decrypted.read())
         fp.truncate()
         fp.seek(0)
 
