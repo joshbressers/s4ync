@@ -83,9 +83,11 @@ class S3:
 
         filepath = re.sub(base, '', file.name)
         try:
-            filepath = filepath.encode('utf-8')
+            #filepath = filepath.encode('utf-8', 'replace')
+            filepath = filepath
         except:
             print "Error: " + filepath
+            return
         key = self.bucket.get_key_metadata(filepath)
 
         # The file exists, let's see if it needs to be updated
@@ -103,6 +105,7 @@ class S3:
             key.link = str(file.link)
 
         if self.configuration.verbose:
+            #print file.name.encode('ascii', 'replace')
             print file.name
 
         self.bucket.add(key, file)
@@ -130,7 +133,7 @@ class S3:
                 if i is None:
                     continue
                 if not local_filelist.has_key(i):
-                    self.delete_s3_file(i.encode('utf-8'))
+                    self.delete_s3_file(i)
 
     def sync_s3_to_file(self, s3_filename, local_file):
         "Sync from S3 to a local file"
@@ -288,11 +291,14 @@ class Bucket:
         "Return a single key"
 
         try:
-            if type(filename) == str:
-                key = try_again(self.real_bucket.lookup, filename)
-            else:
-                # If the filename is unicode, we need to turn it into utf-8
-                key = try_again(self.real_bucket.lookup, filename.encode('utf-8'))
+            key = try_again(self.real_bucket.lookup, filename)
+
+            #if type(filename) == str:
+            #    key = try_again(self.real_bucket.lookup, filename)
+            #else:
+            #    # If the filename is unicode, we need to turn it into utf-8
+            #    key = try_again(self.real_bucket.lookup, filename.encode('utf-8'))
+
         except Exception, e:
             print filename
             raise e
@@ -309,8 +315,8 @@ class Bucket:
     def delete_key(self, filename):
         "Deletes a stored file"
 
-        if type(filename) == unicode:
-            filename = filename.encode('utf-8')
+        #if type(filename) == unicode:
+        #    filename = filename.encode('utf-8')
 
         try_again(self.real_bucket.delete_key, filename)
         if self.cache:

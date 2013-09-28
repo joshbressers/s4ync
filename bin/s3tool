@@ -185,7 +185,7 @@ def main():
         elif (var[0] == '-a' or var[0] == '--access-key'):
             config.access_key = var[1]
         elif (var[0] == '-s' or var[0] == '--secret-key'):
-            self.secret_key = var[1]
+            config.secret_key = var[1]
         elif (var[0] == '-w' or var[0] == '--workers'):
             workers = int(var[1])
         elif (var[0] == '--delete'):

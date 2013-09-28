@@ -42,6 +42,7 @@ class S3Cache:
             if self.cache_dir:
                 cache_file = os.path.join(self.cache_dir, bucket)
                 self.cache = sqlite3.connect(cache_file)
+		self.cache.text_factory = str
                 cachepool[bucket] = self.cache
 
                 # Does the table structure exist?
@@ -57,7 +58,11 @@ class S3Cache:
 
     def get(self, key):
         cursor = self.cache.cursor()
-        cursor.execute('SELECT filename, link, mtime, size FROM bucket WHERE filename="%s"' % key)
+	try:
+		#cursor.execute("SELECT filename, link, mtime, size FROM bucket WHERE filename=?", [key.decode('utf-8')])
+		cursor.execute("SELECT filename, link, mtime, size FROM bucket WHERE filename=?", [key])
+	except:
+		import pdb; pdb.set_trace()
         metadata = {}
 
         data = cursor.fetchone()
@@ -74,14 +79,18 @@ class S3Cache:
 
         #key = unicode(key).encode('utf-8')
 
-        cursor.execute('SELECT * FROM bucket WHERE filename="%s"' % key)
+        cursor.execute('SELECT * FROM bucket WHERE filename=?', [key])
         if cursor.fetchone():
             # We need to update the data
-            cursor.execute('UPDATE bucket set link="%s", size="%s", mtime="%s" where filename="%s"' \
-                % (data['link'], data['size'], data['mtime'], key))
+            cursor.execute('UPDATE bucket set link=?, size=?, mtime=? where filename=?', (data['link'], data['size'], data['mtime'], key))
         else:
             # New key
-            cursor.execute('INSERT INTO bucket (filename, link, size, mtime) values ("%s", "%s", "%s", "%s")' % (key, data['link'], data['size'], data['mtime']))
+            try:
+                cursor.execute('INSERT INTO bucket (filename, link, size, mtime) values (?, ?, ?, ?)', (key, data['link'], data['size'], data['mtime']))
+            except Exception as e:
+                print "Error inserting key: '%s'" % key
+                print data
+                #raise e
 
         self.cache.commit()
 
@@ -97,7 +106,7 @@ class S3Cache:
 
     def delete(self, key):
         cursor = self.cache.cursor()
-        cursor.execute('DELETE FROM bucket WHERE filename="%s"' % key)
+        cursor.execute('DELETE FROM bucket WHERE filename=?', [key])
         self.cache.commit()
 
     def delete_all(self):
@@ -107,7 +116,7 @@ class S3Cache:
 
     def has_key(self, key):
         cursor = self.cache.cursor()
-        cursor.execute('SELECT data FROM bucket WHERE filename="%s"' % key)
+        cursor.execute('SELECT data FROM bucket WHERE filename=?', [key])
         if cursor.fetchone():
             return True
         else:

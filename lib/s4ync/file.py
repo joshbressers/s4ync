@@ -140,7 +140,8 @@ def get_files(path):
 
     files = []
 
-    os.path.walk(unicode(path), __walk_callback, files)
+    #os.path.walk(unicode(path), __walk_callback, files)
+    os.path.walk(path, __walk_callback, files)
 
     return files
 
@@ -153,6 +154,7 @@ def sync_files(destination, source):
     if destination[0:3] == 's3:':
         # This is a push to s3
         file_list = get_files(source)
+        print destination[3:]
         connection = S3.S3(destination[3:])
         connection.sync_filelist_to_s3(file_list, source)
     elif source[0:3] == 's3:':
@@ -174,7 +176,13 @@ def __walk_callback(saved_files, path, names):
 
     for file in names:
         current_file = os.path.join(path, file)
-        if os.path.islink(current_file):
+
+        # Skip huge files
+        if os.path.isfile(current_file) and \
+                (os.path.getsize(current_file) > 1073741824):
+            pass
+        # Don't follow symlinks
+        elif os.path.islink(current_file):
             del(names[names.index(file)])
             saved_files.append(current_file)
         elif (not os.path.isdir(current_file)) \
